@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, TextInput, Image, Alert } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, TextInput, Image, Alert} from 'react-native';
 import SegmentedControl from '@react-native-segmented-control/segmented-control';
 
 const heightWeightData = [
