@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, TextInput, Image, Alert } from 'react-native';
 import SegmentedControl from '@react-native-segmented-control/segmented-control';
 
-// JSON Data
 const heightWeightData = [
   {"height_min": 41.4, "height_max": 47.2, "weight": 3, "color": "grey"},
   {"height_min": 47.2, "height_max": 53.3, "weight": 4, "color": "grey"},
@@ -41,13 +40,6 @@ const heightWeightData = [
   {"height_min": 147.2, "height_max": 149.1, "weight": 37, "color": "green"}
 ];
 
-// dosage数据
-const dosageData = [
-  {"name":"Epinephrine 1 mg/10 mL (IV)", "dosagePerKg": 0.01, "concentration (mg/mL)": 0.1},
-  {"name":"Fentanyl (IV, IO)", "dosagePerKg": 0.001, "concentration (mg/mL)": 0.05},
-  {"name":"Midazolam (IN)", "dosagePerKg": 0.2, "concentration (mg/mL)": 5},
-];
-
 export default function CombinedScreen({ navigation }) {
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [weight, setWeight] = useState('');
@@ -55,50 +47,15 @@ export default function CombinedScreen({ navigation }) {
   const [weightUnit, setWeightUnit] = useState('kg');
   const [heightUnit, setHeightUnit] = useState('cm');
 
-
-  // 单位转换函数
   const convertWeightToKg = (value, unit) => (unit === 'lb' ? value * 0.453592 : value);
   const convertHeightToCm = (value, unit) => (unit === 'in' ? value * 2.54 : value);
 
-  // 根据 Height 从 JSON 表格估算 Weight
   const estimateWeightFromHeight = (heightCm) => {
-    const entry = heightWeightData.find(
-      (item) => heightCm > item.height_min && heightCm <= item.height_max
+    return heightWeightData.find(
+      (item) => heightCm >= item.height_min && heightCm < item.height_max
     );
-    return entry ? entry.weight : null;
   };
 
-  // 根据 Weight 从 JSON 表格计算剂量
-  const calculateDosageForWeight = (weightKg) => {
-    return dosageData.map(medication => {
-      const concentration = medication['concentration (mg/mL)'];
-      const dosage = (medication.dosagePerKg * weightKg) / concentration;
-      return {
-        medication: medication.name,
-        dosagePerKg: medication.dosagePerKg,
-        concentration: concentration,
-        weight: weightKg,
-        calculatedVolume: dosage.toFixed(2) + ' ml',
-      };
-    });
-  };
-  
-  // 测试测试测试测试
-  //   const weight = 36; // patient's weight in kg
-  // const dosages = calculateDosageForWeight(weight);
-
-  // // Display results
-  // dosages.forEach(dosageInfo => {
-  //   console.log(`Medication: ${dosageInfo.medication}`);
-  //   console.log(`  Dosage per kg: ${dosageInfo.dosagePerKg} mg/kg`);
-  //   console.log(`  Concentration: ${dosageInfo.concentration} mg/mL`);
-  //   console.log(`  Patient weight: ${dosageInfo.weight} kg`);
-  //   console.log(`  Calculated volume: ${dosageInfo.calculatedVolume}`);
-  //   console.log('----------------------------');
-  // });
-
-
-  // 处理 Finish 按钮点击事件
   const handleFinish = () => {
     if (!weight && !height) {
       Alert.alert('Error', 'Please input either weight or height.');
@@ -106,24 +63,32 @@ export default function CombinedScreen({ navigation }) {
     }
 
     let finalWeight = null;
+    let matchedColor = null;
 
     if (weight) {
+      // 用户输入体重的情况
       finalWeight = parseFloat(weight) * (weightUnit === 'lb' ? 0.453592 : 1);
+      // 根据finalWeight找到对应颜色：找到第一条entry.weight >= finalWeight的记录
+      let matchedEntry = heightWeightData.find(entry => entry.weight >= finalWeight);
+      if (!matchedEntry) {
+        // 如果没有匹配到更大的weight，使用最后一条
+        matchedEntry = heightWeightData[heightWeightData.length - 1];
+      }
+      matchedColor = matchedEntry.color;
     } else if (height) {
+      // 用户输入身高的情况
       const convertedHeight = parseFloat(height) * (heightUnit === 'in' ? 2.54 : 1);
-      const matchedEntry = heightWeightData.find(
-        (entry) => convertedHeight >= entry.height_min && convertedHeight < entry.height_max
-      );
-
+      const matchedEntry = estimateWeightFromHeight(convertedHeight);
       if (matchedEntry) {
         finalWeight = matchedEntry.weight;
+        matchedColor = matchedEntry.color;
       } else {
         Alert.alert('Error', 'Unable to estimate weight from the given height.');
         return;
       }
     }
 
-    navigation.navigate('Result', { finalWeight });
+    navigation.navigate('Result', { finalWeight, matchedColor });
   };
 
   return (
