@@ -517,6 +517,7 @@ class Measurement : AppCompatActivity(), Scene.OnUpdateListener {
     }
 
 
+
     private fun tapDistanceOf2Points(hitResult: HitResult){
         if (placedAnchorNodes.size == 0){
             placeAnchor(hitResult, cubeRenderable!!)
@@ -609,6 +610,18 @@ class Measurement : AppCompatActivity(), Scene.OnUpdateListener {
             }
         }
     }
+     private fun saveMeasurementToDatabase(distance: Float, points: List<Point>) {
+        try {
+            measurementRepository.saveMeasurement(
+                measurementType = distanceMode,
+                distance = distance,
+                points = points
+            )
+        } catch (e: Exception) {
+            Log.e(TAG, "Error saving measurement: ${e.message}")
+            Toast.makeText(this, "Error saving measurement", Toast.LENGTH_SHORT).show()
+        }
+    }
 
     private fun measureDistanceFromGround(){
         if (fromGroundNodes.size == 0) return
@@ -639,25 +652,54 @@ class Measurement : AppCompatActivity(), Scene.OnUpdateListener {
         }
     }
 
-    private fun measureDistanceOf2Points(distanceMeter: Float){
+    private fun measureDistanceOf2Points(distanceMeter: Float) {
         val distanceTextCM = makeDistanceTextWithCM(distanceMeter)
         val textView = (distanceCardViewRenderable!!.view as LinearLayout)
             .findViewById<TextView>(R.id.distanceCard)
         textView.text = distanceTextCM
+        
+        // Save measurement if we have two points
+        if (placedAnchorNodes.size == 2) {
+            val points = placedAnchorNodes.map { node ->
+                Point(
+                    node.worldPosition.x,
+                    node.worldPosition.y,
+                    node.worldPosition.z
+                )
+            }
+            saveMeasurementToDatabase(distanceMeter, points)
+        }
+        
         Log.d(TAG, "distance: ${distanceTextCM}")
     }
 
-    private fun measureMultipleDistances(){
-        if (placedAnchorNodes.size > 1){
-            for (i in 0 until placedAnchorNodes.size){
-                for (j in i+1 until placedAnchorNodes.size){
+    private fun measureMultipleDistances() {
+        if (placedAnchorNodes.size > 1) {
+            for (i in 0 until placedAnchorNodes.size) {
+                for (j in i + 1 until placedAnchorNodes.size) {
                     val distanceMeter = calculateDistance(
                         placedAnchorNodes[i].worldPosition,
-                        placedAnchorNodes[j].worldPosition)
+                        placedAnchorNodes[j].worldPosition
+                    )
                     val distanceCM = changeUnit(distanceMeter, "cm")
                     val distanceCMFloor = "%.2f".format(distanceCM)
                     multipleDistances[i][j]!!.setText(distanceCMFloor)
                     multipleDistances[j][i]!!.setText(distanceCMFloor)
+
+                    // Save each pair of measurements
+                    val points = listOf(
+                        Point(
+                            placedAnchorNodes[i].worldPosition.x,
+                            placedAnchorNodes[i].worldPosition.y,
+                            placedAnchorNodes[i].worldPosition.z
+                        ),
+                        Point(
+                            placedAnchorNodes[j].worldPosition.x,
+                            placedAnchorNodes[j].worldPosition.y,
+                            placedAnchorNodes[j].worldPosition.z
+                        )
+                    )
+                    saveMeasurementToDatabase(distanceMeter, points)
                 }
             }
         }
